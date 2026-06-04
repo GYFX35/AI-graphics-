@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
+const { HumanMessage } = require('@langchain/core/messages');
 require('dotenv').config();
 
 const app = express();
@@ -46,8 +47,11 @@ app.get('/api/shopline/products', async (req, res) => {
   }
 });
 
-// Initialize Google Generative AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+// Initialize LangChain ChatGoogleGenerativeAI
+const chatModel = new ChatGoogleGenerativeAI({
+  model: "gemini-1.5-flash",
+  apiKey: process.env.GOOGLE_AI_API_KEY || 'dummy_key',
+});
 
 app.post('/api/generate', async (req, res) => {
   const { prompt, mode, product } = req.body;
@@ -67,18 +71,18 @@ app.post('/api/generate', async (req, res) => {
   try {
     let insight = '';
 
-    // Attempt to use Google AI for insight if API key is provided
+    // Attempt to use LangChain for insight if API key is provided
     if (process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY !== 'your_api_key_here') {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       let aiPrompt = `As a design expert, provide a short, inspiring design insight (2 sentences) for the following ${mode} request: "${prompt}"`;
 
       if (mode === 'shopline' && product) {
         aiPrompt = `As a design expert, provide a short, inspiring design insight (2 sentences) for a Shopline product promotion. Product: "${product.title}". Request: "${prompt}"`;
       }
 
-      const result = await model.generateContent(aiPrompt);
-      const response = await result.response;
-      insight = response.text();
+      const response = await chatModel.invoke([
+        new HumanMessage(aiPrompt),
+      ]);
+      insight = response.content;
     } else {
       insight = `Simulated insight for ${mode}: Great choice! This will look amazing.`;
     }
@@ -99,6 +103,44 @@ app.post('/api/generate', async (req, res) => {
       mode,
       error: 'Google AI API error, using fallback'
     });
+  }
+});
+
+app.post('/api/langflow', async (req, res) => {
+  const { prompt } = req.body;
+  const LANGFLOW_ID = process.env.LANGFLOW_ID;
+  const FLOW_ID = process.env.FLOW_ID;
+  const LANGFLOW_TOKEN = process.env.LANGFLOW_TOKEN;
+  const LANGFLOW_BASE_URL = process.env.LANGFLOW_BASE_URL || 'https://api.langflow.astra.datastax.com';
+
+  if (!LANGFLOW_ID || !FLOW_ID || !LANGFLOW_TOKEN) {
+    return res.json({
+      result: `LangFlow is not configured. (Mock) You said: ${prompt}`,
+      isMock: true
+    });
+  }
+
+  try {
+    const response = await axios.post(
+      `${LANGFLOW_BASE_URL}/lf/${LANGFLOW_ID}/api/v1/run/${FLOW_ID}`,
+      {
+        input_value: prompt,
+        output_type: 'chat',
+        input_type: 'chat',
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${LANGFLOW_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const result = response.data.outputs[0].outputs[0].results.message.text;
+    res.json({ result });
+  } catch (error) {
+    console.error('Error calling LangFlow:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to communicate with LangFlow' });
   }
 });
 

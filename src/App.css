@@ -429,6 +429,29 @@ body {
   margin-bottom: 3rem;
 }
 
+.langflow-response-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  width: 100%;
+  text-align: left;
+}
+
+.langflow-response-box h4 {
+  margin-top: 0;
+  color: #4facfe;
+  margin-bottom: 10px;
+}
+
+.langflow-content {
+  color: #eee;
+  white-space: pre-wrap;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+}
+
 .sponsorship-stats {
   display: flex;
   justify-content: center;

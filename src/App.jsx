@@ -11,6 +11,7 @@ function App() {
   const [shoplineProducts, setShoplineProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isFetchingProducts, setIsFetchingProducts] = useState(false);
+  const [langflowResponse, setLangflowResponse] = useState('');
 
   const fetchShoplineProducts = async () => {
     setIsFetchingProducts(true);
@@ -50,7 +51,29 @@ function App() {
     setIsGenerating(true);
     setPreviewImage(null);
     setPreviewVideo(null);
+    setLangflowResponse('');
     const API_URL = import.meta.env.VITE_API_URL || '';
+
+    if (mode === 'langflow') {
+      try {
+        const response = await fetch(`${API_URL}/api/langflow`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt }),
+        });
+        const data = await response.json();
+        setLangflowResponse(data.result);
+      } catch (error) {
+        console.error('Error with LangFlow:', error);
+        setLangflowResponse('Failed to get response from LangFlow.');
+      } finally {
+        setIsGenerating(false);
+      }
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/api/generate`, {
         method: 'POST',
@@ -258,6 +281,12 @@ function App() {
             >
               Shopline
             </button>
+            <button
+              className={`mode-btn ${mode === 'langflow' ? 'active' : ''}`}
+              onClick={() => setMode('langflow')}
+            >
+              LangFlow
+            </button>
           </div>
 
           {mode === 'shopline' && (
@@ -293,6 +322,7 @@ function App() {
                 mode === 'web' ? "e.g., Landing page for tech startup" :
                 mode === 'photo' ? "e.g., Cyberpunk portrait effect" :
                 mode === 'poster' ? "e.g., Event poster for jazz concert" :
+                mode === 'langflow' ? "e.g., Ask anything to LangFlow..." :
                 "e.g., Dynamic product showcase video"
               }
               value={prompt}
@@ -314,8 +344,16 @@ function App() {
                 <p>AI is thinking...</p>
               </div>
             )}
-            {previewImage || previewVideo ? (
+            {previewImage || previewVideo || langflowResponse ? (
               <div className="preview-container">
+                {langflowResponse && (
+                  <div className="langflow-response-box">
+                    <h4>LangFlow Output</h4>
+                    <div className="langflow-content">
+                      {langflowResponse}
+                    </div>
+                  </div>
+                )}
                 {previewImage && <img src={previewImage} alt="Generated Design" className="placeholder-img" />}
                 {previewVideo && (
                   <video controls className="placeholder-video" autoPlay muted loop>
