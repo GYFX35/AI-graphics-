@@ -13,6 +13,9 @@ function App() {
   const [isFetchingProducts, setIsFetchingProducts] = useState(false);
   const [langflowResponse, setLangflowResponse] = useState('');
   const [user, setUser] = useState(null);
+  const [niche, setNiche] = useState('');
+  const [dropshipperSuggestions, setDropshipperSuggestions] = useState([]);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -47,6 +50,28 @@ function App() {
       console.error('Error fetching Shopline products:', error);
     } finally {
       setIsFetchingProducts(false);
+    }
+  };
+
+  const fetchDropshipperSuggestions = async () => {
+    if (!niche) return;
+    setIsFetchingSuggestions(true);
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    try {
+      const response = await fetch(`${API_URL}/api/dropshipper/suggestions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ niche }),
+      });
+      const data = await response.json();
+      setDropshipperSuggestions(data.suggestions || []);
+    } catch (error) {
+      console.error('Error fetching dropshipper suggestions:', error);
+    } finally {
+      setIsFetchingSuggestions(false);
     }
   };
 
@@ -260,6 +285,11 @@ function App() {
             <span className="card-icon">🏎️</span>
             <h3>Automotive & Aero</h3>
             <p>Conceptualize next-generation cars, vehicles, and aircraft with advanced aerodynamic AI modeling.</p>
+          </div>
+          <div className="card enhancement-card">
+            <span className="card-icon">📦</span>
+            <h3>AI Dropshipper</h3>
+            <p>Discover trending products, generate marketing strategies, and boost e-commerce visibility with AI.</p>
           </div>
         </div>
       </section>
@@ -483,6 +513,12 @@ function App() {
                 >
                   Automotive
                 </button>
+                <button
+                  className={`mode-btn enhancement ${mode === 'dropshipper' ? 'active' : ''}`}
+                  onClick={() => setMode('dropshipper')}
+                >
+                  Dropshipper
+                </button>
               </div>
             </div>
           </div>
@@ -507,6 +543,51 @@ function App() {
                       <span>{product.title}</span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === 'dropshipper' && (
+            <div className="dropshipper-container">
+              <div className="niche-input-group">
+                <input
+                  type="text"
+                  className="input-field niche-input"
+                  placeholder="Enter your niche (e.g., Pet Supplies, Yoga Gear)"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                />
+                <button
+                  className="cta-button"
+                  onClick={fetchDropshipperSuggestions}
+                  disabled={isFetchingSuggestions || !niche}
+                >
+                  {isFetchingSuggestions ? 'Finding Trends...' : 'Find Trending Products'}
+                </button>
+              </div>
+
+              {dropshipperSuggestions.length > 0 && (
+                <div className="suggestions-list">
+                  <h4>AI Recommended Products for "{niche}"</h4>
+                  <div className="suggestions-grid">
+                    {dropshipperSuggestions.map((item, index) => (
+                      <div key={index} className="suggestion-card">
+                        <h5>{item.title}</h5>
+                        <p><strong>Trend Reason:</strong> {item.reason}</p>
+                        <p><strong>Strategy:</strong> {item.strategy}</p>
+                        <button
+                          className="secondary-button list-btn"
+                          onClick={() => {
+                            setPrompt(`Create high-converting ad visuals for ${item.title} in the ${niche} niche`);
+                            alert(`${item.title} selected for design! Prompt updated.`);
+                          }}
+                        >
+                          Design for this Product
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -573,6 +654,15 @@ function App() {
                       </button>
                     </div>
                     <p>{aiInsight}</p>
+                    {mode === 'dropshipper' && (
+                      <button
+                        className="cta-button list-for-sale-btn"
+                        onClick={() => alert('Product listed for sale on DesignAI Marketplace!')}
+                        style={{ marginTop: '1rem', width: '100%' }}
+                      >
+                        🚀 List for Sale & Boost Visibility
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

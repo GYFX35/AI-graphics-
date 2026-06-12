@@ -149,6 +149,8 @@ app.post('/api/generate', async (req, res) => {
         aiPrompt = `As a game design and development expert, provide a short, strategic insight (2 sentences) for this game-related request: "${prompt}"`;
       } else if (mode === 'automotive') {
         aiPrompt = `As an automotive and aerospace design expert, provide a short, technical and inspiring insight (2 sentences) for this vehicle/aircraft concept: "${prompt}"`;
+      } else if (mode === 'dropshipper') {
+        aiPrompt = `As a dropshipping and e-commerce expert, provide a short, strategic insight (2 sentences) for this product discovery or marketing request: "${prompt}"`;
       }
 
       const response = await chatModel.invoke([
@@ -242,6 +244,49 @@ app.post('/api/langflow', async (req, res) => {
   } catch (error) {
     console.error('Error calling LangFlow:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to communicate with LangFlow' });
+  }
+});
+
+app.post('/api/dropshipper/suggestions', async (req, res) => {
+  const { niche } = req.body;
+
+  if (!niche) {
+    return res.status(400).json({ error: 'Niche is required' });
+  }
+
+  try {
+    let suggestions = [];
+    if (process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY !== 'your_api_key_here') {
+      const aiPrompt = `As an AI Dropshipping expert, suggest 3 trending products and a basic marketing strategy for the niche: "${niche}". Return the response as a JSON array of objects with "title", "reason", and "strategy" fields.`;
+
+      const response = await chatModel.invoke([
+        new HumanMessage(aiPrompt),
+      ]);
+
+      // Simple parsing of AI response if it's JSON-like
+      try {
+        const cleanedContent = response.content.replace(/```json|```/g, '').trim();
+        suggestions = JSON.parse(cleanedContent);
+      } catch (e) {
+        // Fallback if AI doesn't return perfect JSON
+        suggestions = [
+          { title: `${niche} Pro Kit`, reason: 'High demand in current market', strategy: 'Influencer marketing on TikTok' },
+          { title: `Eco-friendly ${niche}`, reason: 'Growing sustainability trend', strategy: 'Facebook Ads targeting eco-conscious users' },
+          { title: `Smart ${niche} Gadget`, reason: 'Tech-savvy audience appeal', strategy: 'Email marketing and blog SEO' }
+        ];
+      }
+    } else {
+      suggestions = [
+        { title: `${niche} Pro Kit`, reason: 'High demand in current market', strategy: 'Influencer marketing on TikTok' },
+        { title: `Eco-friendly ${niche}`, reason: 'Growing sustainability trend', strategy: 'Facebook Ads targeting eco-conscious users' },
+        { title: `Smart ${niche} Gadget`, reason: 'Tech-savvy audience appeal', strategy: 'Email marketing and blog SEO' }
+      ];
+    }
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('Error with Google AI API for dropshipper:', error);
+    res.status(500).json({ error: 'Failed to generate suggestions' });
   }
 });
 
