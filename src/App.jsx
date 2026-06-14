@@ -358,6 +358,11 @@ function App() {
             <h3>Social Networks AI</h3>
             <p>Create viral content, profile aesthetics, and engaging social media campaign assets.</p>
           </div>
+          <div className="card enhancement-card">
+            <span className="card-icon">⚽</span>
+            <h3>Sports AI</h3>
+            <p>Analyze performance data, design team branding, and create engaging sports media assets.</p>
+          </div>
         </div>
       </section>
 
@@ -495,6 +500,10 @@ function App() {
             <img src="https://loremflickr.com/400/300/supercar,concept" alt="Automotive Design" />
             <div className="showcase-info">Automotive</div>
           </div>
+          <div className="showcase-item">
+            <img src="https://loremflickr.com/400/300/sports,stadium" alt="Sports Design" />
+            <div className="showcase-info">Sports</div>
+          </div>
         </div>
       </section>
 
@@ -610,6 +619,12 @@ function App() {
                 >
                   Social
                 </button>
+                <button
+                  className={`mode-btn enhancement ${mode === 'sports' ? 'active' : ''}`}
+                  onClick={() => setMode('sports')}
+                >
+                  Sports
+                </button>
               </div>
             </div>
           </div>
@@ -701,6 +716,7 @@ function App() {
                 mode === 'telecoms' ? "e.g., 5G network coverage map or satellite ground station design" :
                 mode === 'medias' ? "e.g., News broadcast studio layout or digital magazine cover" :
                 mode === 'social-networks' ? "e.g., Viral Instagram story template or YouTube channel branding" :
+                mode === 'sports' ? "e.g., Team jersey design, match highlights infographic, or stadium layout" :
                 "e.g., Describe your creative vision..."
               }
               value={prompt}

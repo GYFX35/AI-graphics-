@@ -49,3 +49,15 @@ test('renders Automotive mode button', () => {
   const modeButtons = screen.getAllByText(/^Automotive$/i);
   expect(modeButtons.length).toBeGreaterThan(0);
 });
+
+test('renders Sports AI feature card', () => {
+  render(<App />);
+  const featureElement = screen.getByText(/Sports AI/i);
+  expect(featureElement).toBeDefined();
+});
+
+test('renders Sports mode button', () => {
+  render(<App />);
+  const modeButtons = screen.getAllByText(/^Sports$/i);
+  expect(modeButtons.length).toBeGreaterThan(0);
+});
