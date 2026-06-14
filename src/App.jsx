@@ -434,6 +434,11 @@ function App() {
             <h3>Finance AI</h3>
             <p>Generate marketing campaigns and product interfaces for banks, insurance, VC, fintechs, and mobile operators.</p>
           </div>
+          <div className="card enhancement-card">
+            <span className="card-icon">🖌️</span>
+            <h3>Art AI Painter</h3>
+            <p>Create digital masterpieces, oil paintings, and abstract art with advanced AI brushstroke simulation.</p>
+          </div>
         </div>
       </section>
 
@@ -583,6 +588,10 @@ function App() {
             <img src="https://loremflickr.com/400/300/finance,banking" alt="Finance Design" />
             <div className="showcase-info">Finance AI</div>
           </div>
+          <div className="showcase-item">
+            <img src="https://loremflickr.com/400/300/painting,art" alt="Art AI Painter" />
+            <div className="showcase-info">Art AI Painter</div>
+          </div>
         </div>
       </section>
 
@@ -717,6 +726,12 @@ function App() {
                   Finance
                 </button>
                 <button
+                  className={`mode-btn enhancement ${mode === 'art-ai' ? 'active' : ''}`}
+                  onClick={() => setMode('art-ai')}
+                >
+                  Art AI
+                </button>
+                <button
                   className={`mode-btn enhancement ${mode === 'github' ? 'active' : ''}`}
                   onClick={() => setMode('github')}
                 >
@@ -816,6 +831,7 @@ function App() {
                 mode === 'sports' ? "e.g., Professional football club branding or athlete performance dashboard" :
                 mode === 'health' ? "e.g., Medical dashboard interface or fitness tracking app" :
                 mode === 'finance' ? "e.g., Mobile banking app UI or fintech marketing campaign" :
+                mode === 'art-ai' ? "e.g., Oil painting of a sunset over mountains or abstract digital art" :
                 mode === 'github' ? "e.g., Personal portfolio for GitHub Pages or documentation site" :
                 "e.g., Describe your creative vision..."
               }

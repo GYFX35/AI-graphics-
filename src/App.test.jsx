@@ -73,3 +73,15 @@ test('renders Finance mode button', () => {
   const modeButton = screen.getByText(/^Finance$/i);
   expect(modeButton).toBeDefined();
 });
+
+test('renders Art AI Painter feature card', () => {
+  render(<App />);
+  const featureElements = screen.getAllByText(/Art AI Painter/i);
+  expect(featureElements.length).toBeGreaterThan(0);
+});
+
+test('renders Art AI mode button', () => {
+  render(<App />);
+  const modeButton = screen.getByText(/^Art AI$/i);
+  expect(modeButton).toBeDefined();
+});
