@@ -191,6 +191,8 @@ app.post('/api/generate', async (req, res) => {
         aiPrompt = `As a finance AI expert for banks, insurance, VC, fintechs, and mobile operators, provide a short, professional and strategic marketing/product insight (2 sentences) for this request: "${prompt}"`;
       } else if (mode === 'art-ai') {
         aiPrompt = `As a professional AI artist and digital painter, provide a short, inspiring insight (2 sentences) about the artistic style and technique for this request: "${prompt}"`;
+      } else if (mode === 'education') {
+        aiPrompt = `As a global education and ed-tech expert, provide a short, professional and strategic insight (2 sentences) for this educational design or content request: "${prompt}"`;
       }
 
       const response = await chatModel.invoke([

@@ -516,6 +516,11 @@ function App() {
             <h3>Art AI Painter</h3>
             <p>Create digital masterpieces, oil paintings, and abstract art with advanced AI brushstroke simulation.</p>
           </div>
+          <div className="card enhancement-card">
+            <span className="card-icon">🎓</span>
+            <h3>Global Education AI</h3>
+            <p>Design interactive learning platforms, educational content, and global classroom experiences with AI.</p>
+          </div>
         </div>
       </section>
 
@@ -677,6 +682,10 @@ function App() {
             <img src="https://loremflickr.com/400/300/painting,art" alt="Art AI Painter" />
             <div className="showcase-info">Art AI Painter</div>
           </div>
+          <div className="showcase-item">
+            <img src="https://loremflickr.com/400/300/education,learning" alt="Global Education" />
+            <div className="showcase-info">Global Education</div>
+          </div>
         </div>
       </section>
 
@@ -829,6 +838,12 @@ function App() {
                   Art AI
                 </button>
                 <button
+                  className={`mode-btn enhancement ${mode === 'education' ? 'active' : ''}`}
+                  onClick={() => setMode('education')}
+                >
+                  Education
+                </button>
+                <button
                   className={`mode-btn enhancement ${mode === 'github' ? 'active' : ''}`}
                   onClick={() => setMode('github')}
                 >
@@ -931,6 +946,7 @@ function App() {
                 mode === 'health' ? "e.g., Medical dashboard interface or fitness tracking app" :
                 mode === 'finance' ? "e.g., Mobile banking app UI or fintech marketing campaign" :
                 mode === 'art-ai' ? "e.g., Oil painting of a sunset over mountains or abstract digital art" :
+                mode === 'education' ? "e.g., Interactive math lesson for kids or global history curriculum layout" :
                 mode === 'github' ? "e.g., Personal portfolio for GitHub Pages or documentation site" :
                 "e.g., Describe your creative vision..."
               }
