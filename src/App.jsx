@@ -51,6 +51,7 @@ function App() {
   const [isTakingScreenshot, setIsTakingScreenshot] = useState(false);
   const [screenshotResult, setScreenshotResult] = useState(null);
   const [provider, setProvider] = useState('google');
+  const [useRAG, setUseRAG] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -321,6 +322,7 @@ function App() {
             prompt,
             mode,
             provider,
+            useRAG,
             product: mode === 'shopline' ? selectedProduct : null
           }),
         });
@@ -833,6 +835,24 @@ function App() {
                 >
                   Anthropic Claude
                 </button>
+                <button
+                  className={`mode-btn ${provider === 'openrouter' ? 'active' : ''}`}
+                  onClick={() => setProvider('openrouter')}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                >
+                  OpenRouter
+                </button>
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label className="rag-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: '#94a3b8' }}>
+                  <input
+                    type="checkbox"
+                    checked={useRAG}
+                    onChange={(e) => setUseRAG(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Enable RAG AI (Supabase)
+                </label>
               </div>
             </div>
 

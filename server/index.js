@@ -8,7 +8,9 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const session = require('express-session');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { ChatAnthropic } = require('@langchain/anthropic');
+const { ChatOpenAI } = require('@langchain/openai');
 const { HumanMessage, SystemMessage } = require('@langchain/core/messages');
+const { createClient } = require('@supabase/supabase-js');
 const { Octokit } = require('octokit');
 const { google } = require('googleapis');
 const puppeteer = require('puppeteer');
@@ -147,8 +149,26 @@ const claudeModel = new ChatAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || 'dummy_key',
 });
 
+// Initialize LangChain ChatOpenAI for OpenRouter
+const openRouterModel = new ChatOpenAI({
+  modelName: process.env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct:free",
+  openAIApiKey: process.env.OPENROUTER_API_KEY || 'dummy_key',
+  configuration: {
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: {
+      "HTTP-Referer": process.env.FRONTEND_URL || 'http://localhost:3000',
+      "X-Title": "DesignAI Studio",
+    }
+  }
+});
+
+// Initialize Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+
 app.post('/api/generate', async (req, res) => {
-  const { prompt, mode, product, provider = 'google' } = req.body;
+  const { prompt, mode, product, provider = 'google', useRAG = false } = req.body;
 
   if (!prompt || !mode) {
     return res.status(400).json({ error: 'Prompt and mode are required' });
@@ -170,9 +190,17 @@ app.post('/api/generate', async (req, res) => {
     // Attempt to use LangChain for insight if API key is provided
     const hasGoogleKey = process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY !== 'your_api_key_here';
     const hasClaudeKey = process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here';
+    const hasOpenRouterKey = process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
 
-    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
-      const chatModel = provider === 'claude' ? claudeModel : googleModel;
+    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey) || (provider === 'openrouter' && hasOpenRouterKey)) {
+      let chatModel;
+      if (provider === 'claude') {
+        chatModel = claudeModel;
+      } else if (provider === 'openrouter') {
+        chatModel = openRouterModel;
+      } else {
+        chatModel = googleModel;
+      }
       let systemPrompt = "You are a professional design expert.";
       let humanPrompt = `Provide a short, inspiring design insight (2 sentences) for the following ${mode} request: "${prompt}"`;
 
@@ -247,9 +275,33 @@ app.post('/api/generate', async (req, res) => {
         humanPrompt = `Provide a short, professional insight (2 sentences) for this map-related design request: "${prompt}"`;
       }
 
+      // Simulated RAG Logic
+      let context = "";
+      if (useRAG && supabase) {
+        try {
+          // In a real RAG implementation, you would:
+          // 1. Generate an embedding for the prompt
+          // 2. Query Supabase vector store
+          // 3. Append context to the human prompt
+
+          // For this simulation, we'll try to fetch some relevant context if a 'documents' table exists
+          const { data, error } = await supabase
+            .from('documents')
+            .select('content')
+            .limit(1);
+
+          if (data && data.length > 0) {
+            context = `\n\nContext from knowledge base: ${data[0].content}`;
+          }
+        } catch (ragError) {
+          console.error('RAG Error:', ragError);
+          // Continue without RAG context if it fails
+        }
+      }
+
       const response = await chatModel.invoke([
         new SystemMessage(systemPrompt),
-        new HumanMessage(humanPrompt),
+        new HumanMessage(humanPrompt + context),
       ]);
       insight = response.content;
     } else {
@@ -440,9 +492,17 @@ app.post('/api/github/copilot-suggestion', async (req, res) => {
     let suggestion = '';
     const hasGoogleKey = process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY !== 'your_api_key_here';
     const hasClaudeKey = process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here';
+    const hasOpenRouterKey = process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
 
-    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
-      const chatModel = provider === 'claude' ? claudeModel : googleModel;
+    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey) || (provider === 'openrouter' && hasOpenRouterKey)) {
+      let chatModel;
+      if (provider === 'claude') {
+        chatModel = claudeModel;
+      } else if (provider === 'openrouter') {
+        chatModel = openRouterModel;
+      } else {
+        chatModel = googleModel;
+      }
       const systemPrompt = "You are GitHub Copilot, an AI pair programmer.";
       const humanPrompt = `Provide a snippet of high-quality React or CSS code that would enhance a "${mode}" project with the following description: "${prompt}". Also explain why this code helps.`;
 
@@ -473,9 +533,17 @@ app.post('/api/dropshipper/suggestions', async (req, res) => {
     let suggestions = [];
     const hasGoogleKey = process.env.GOOGLE_AI_API_KEY && process.env.GOOGLE_AI_API_KEY !== 'your_api_key_here';
     const hasClaudeKey = process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY !== 'your_anthropic_api_key_here';
+    const hasOpenRouterKey = process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY !== 'your_openrouter_api_key_here';
 
-    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
-      const chatModel = provider === 'claude' ? claudeModel : googleModel;
+    if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey) || (provider === 'openrouter' && hasOpenRouterKey)) {
+      let chatModel;
+      if (provider === 'claude') {
+        chatModel = claudeModel;
+      } else if (provider === 'openrouter') {
+        chatModel = openRouterModel;
+      } else {
+        chatModel = googleModel;
+      }
       const systemPrompt = "You are an AI Dropshipping expert.";
       const humanPrompt = `Suggest 3 trending products and a basic marketing strategy for the niche: "${niche}". Return ONLY a JSON array of objects with "title", "reason", and "strategy" fields. Do not include any conversational text.`;
 
