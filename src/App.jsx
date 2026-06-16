@@ -22,6 +22,7 @@ function MapUpdater({ center }) {
 
 function App() {
   const [prompt, setPrompt] = useState('');
+  const [provider, setProvider] = useState('google');
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
@@ -120,7 +121,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ niche }),
+        body: JSON.stringify({ niche, provider }),
       });
       const data = await response.json();
       setDropshipperSuggestions(data.suggestions || []);
@@ -274,11 +275,16 @@ function App() {
     setPreviewVideo(null);
     setLangflowResponse('');
     setAiInsight('');
+    setDeployUrl('');
+    setRepoUrl('');
+    setCopilotSuggestion('');
+    setMapResults([]);
     const API_URL = import.meta.env.VITE_API_URL || '';
 
     let result = {
       prompt,
       mode,
+      provider,
       timestamp: new Date().toLocaleTimeString(),
     };
 
@@ -299,7 +305,7 @@ function App() {
         const data = await response.json();
         setLangflowResponse(data.result);
         result.langflowResponse = data.result;
-        setHistory([result, ...history]);
+        setHistory(prev => [result, ...prev]);
       } catch (error) {
         console.error('Error with LangFlow:', error);
         setLangflowResponse('Failed to get response from LangFlow.');
@@ -319,6 +325,7 @@ function App() {
         body: JSON.stringify({
           prompt,
           mode,
+          provider,
           product: mode === 'shopline' ? selectedProduct : null
         }),
       });
@@ -340,7 +347,7 @@ function App() {
         setAiInsight(data.insight);
         result.insight = data.insight;
       }
-      setHistory([result, ...history]);
+      setHistory(prev => [result, ...prev]);
     } catch (error) {
       console.error('Error generating design:', error);
       // Fallback for demo if backend is not running
@@ -358,7 +365,7 @@ function App() {
       }
       result.insight = "Design insight: Focus on balance and typography for your project.";
       setAiInsight(result.insight);
-      setHistory([result, ...history]);
+      setHistory(prev => [result, ...prev]);
     } finally {
       setIsGenerating(false);
     }
@@ -376,7 +383,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ prompt, mode }),
+        body: JSON.stringify({ prompt, mode, provider }),
       });
       const data = await response.json();
       if (data.success) {
@@ -406,7 +413,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ prompt, mode }),
+        body: JSON.stringify({ prompt, mode, provider }),
       });
       const data = await response.json();
       setCopilotSuggestion(data.suggestion);
@@ -925,37 +932,37 @@ function App() {
                   className={`mode-btn enhancement ${mode === 'social-networks' ? 'active' : ''}`}
                   onClick={() => setMode('social-networks')}
                 >
-                  Social
+                  Social Networks
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'sports' ? 'active' : ''}`}
                   onClick={() => setMode('sports')}
                 >
-                  Sports
+                  Sports AI
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'health' ? 'active' : ''}`}
                   onClick={() => setMode('health')}
                 >
-                  Health
+                  Health AI
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'finance' ? 'active' : ''}`}
                   onClick={() => setMode('finance')}
                 >
-                  Finance
+                  Finance AI
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'art-ai' ? 'active' : ''}`}
                   onClick={() => setMode('art-ai')}
                 >
-                  Art AI
+                  Art AI Painter
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'education' ? 'active' : ''}`}
                   onClick={() => setMode('education')}
                 >
-                  Education
+                  Global Education
                 </button>
                 <button
                   className={`mode-btn enhancement ${mode === 'maps' ? 'active' : ''}`}
@@ -1042,6 +1049,24 @@ function App() {
               )}
             </div>
           )}
+
+          <div className="provider-selector">
+            <span className="group-label">AI Provider</span>
+            <div className="provider-options">
+              <button
+                className={`provider-btn ${provider === 'google' ? 'active' : ''}`}
+                onClick={() => setProvider('google')}
+              >
+                Google Gemini
+              </button>
+              <button
+                className={`provider-btn ${provider === 'claude' ? 'active' : ''}`}
+                onClick={() => setProvider('claude')}
+              >
+                Anthropic Claude
+              </button>
+            </div>
+          </div>
 
           <div className="editor-controls">
             <div className="input-group-wrapper">
@@ -1280,6 +1305,7 @@ function App() {
                   <div key={index} className="history-item" onClick={() => {
                     setPrompt(item.prompt);
                     setMode(item.mode);
+                    setProvider(item.provider || 'google');
                     setPreviewImage(item.imageUrl);
                     setPreviewVideo(item.videoUrl);
                     setAiInsight(item.insight);

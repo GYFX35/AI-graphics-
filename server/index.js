@@ -8,7 +8,7 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const session = require('express-session');
 const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 const { ChatAnthropic } = require('@langchain/anthropic');
-const { HumanMessage } = require('@langchain/core/messages');
+const { HumanMessage, SystemMessage } = require('@langchain/core/messages');
 const { Octokit } = require('octokit');
 const { google } = require('googleapis');
 const puppeteer = require('puppeteer');
@@ -158,7 +158,7 @@ app.post('/api/generate', async (req, res) => {
   let imageUrl = `https://loremflickr.com/800/600/${encodeURIComponent(keywords.replace(/\s+/g, ','))}`;
   let videoUrl = (mode === 'video' || mode === 'cinema') ? 'https://www.w3schools.com/html/mov_bbb.mp4' : null;
 
-  if (videoUrl) {
+  if (videoUrl || mode === 'maps') {
     imageUrl = null;
   }
 
@@ -171,62 +171,96 @@ app.post('/api/generate', async (req, res) => {
 
     if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
       const chatModel = provider === 'claude' ? claudeModel : googleModel;
-      let aiPrompt = `As a design expert, provide a short, inspiring design insight (2 sentences) for the following ${mode} request: "${prompt}"`;
+      let systemPrompt = "You are a world-class design and industry expert.";
+      let userPrompt = `Provide a short, inspiring design insight (2 sentences) for the following ${mode} request: "${prompt}"`;
 
       if (mode === 'shopline' && product) {
-        aiPrompt = `As an e-commerce and dropshipping expert, provide a short, inspiring insight (2 sentences) for a product promotion. Product: "${product.title}". Request: "${prompt}"`;
+        systemPrompt = "You are an e-commerce and dropshipping expert.";
+        userPrompt = `Provide a short, inspiring insight (2 sentences) for a product promotion. Product: "${product.title}". Request: "${prompt}"`;
       } else if (mode === 'cinema') {
-        aiPrompt = `As a cinematography expert, provide a short, professional insight (2 sentences) for this shot/scene request: "${prompt}"`;
+        systemPrompt = "You are a cinematography expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this shot/scene request: "${prompt}"`;
       } else if (mode === 'music') {
-        aiPrompt = `As a music producer, provide a short, inspiring insight (2 sentences) for this audio/music request: "${prompt}"`;
+        systemPrompt = "You are a music producer.";
+        userPrompt = `Provide a short, inspiring insight (2 sentences) for this audio/music request: "${prompt}"`;
       } else if (mode === 'entertainment') {
-        aiPrompt = `As a global entertainment industry expert, provide a short, strategic insight (2 sentences) for this project: "${prompt}"`;
+        systemPrompt = "You are a global entertainment industry expert.";
+        userPrompt = `Provide a short, strategic insight (2 sentences) for this project: "${prompt}"`;
       } else if (mode === 'ad-creative') {
-        aiPrompt = `As an expert ad creative director, provide a short, high-conversion insight (2 sentences) for this advertisement request: "${prompt}"`;
+        systemPrompt = "You are an expert ad creative director.";
+        userPrompt = `Provide a short, high-conversion insight (2 sentences) for this advertisement request: "${prompt}"`;
       } else if (mode === 'web') {
-        aiPrompt = `As a professional web designer, provide a short, strategic insight (2 sentences) for this layout request: "${prompt}"`;
+        systemPrompt = "You are a professional web designer.";
+        userPrompt = `Provide a short, strategic insight (2 sentences) for this layout request: "${prompt}"`;
       } else if (mode === 'mobile') {
-        aiPrompt = `As a mobile UI/UX design expert, provide a short, professional insight (2 sentences) for this mobile app/interface request: "${prompt}"`;
+        systemPrompt = "You are a mobile UI/UX design expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this mobile app/interface request: "${prompt}"`;
       } else if (mode === 'desktop') {
-        aiPrompt = `As a desktop software interface design expert, provide a short, strategic insight (2 sentences) for this application layout request: "${prompt}"`;
+        systemPrompt = "You are a desktop software interface design expert.";
+        userPrompt = `Provide a short, strategic insight (2 sentences) for this application layout request: "${prompt}"`;
       } else if (mode === 'graphics') {
-        aiPrompt = `As a graphic design expert, provide a short, professional insight (2 sentences) for this graphic request: "${prompt}"`;
+        systemPrompt = "You are a graphic design expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this graphic request: "${prompt}"`;
       } else if (mode === 'posters') {
-        aiPrompt = `As a professional poster designer, provide a short, artistic insight (2 sentences) for this poster request: "${prompt}"`;
+        systemPrompt = "You are a professional poster designer.";
+        userPrompt = `Provide a short, artistic insight (2 sentences) for this poster request: "${prompt}"`;
       } else if (mode === 'games') {
-        aiPrompt = `As a game design and development expert, provide a short, strategic insight (2 sentences) for this game-related request: "${prompt}"`;
+        systemPrompt = "You are a game design and development expert.";
+        userPrompt = `Provide a short, strategic insight (2 sentences) for this game-related request: "${prompt}"`;
       } else if (mode === 'automotive') {
-        aiPrompt = `As an automotive and aerospace design expert, provide a short, technical and inspiring insight (2 sentences) for this vehicle/aircraft concept: "${prompt}"`;
+        systemPrompt = "You are an automotive and aerospace design expert.";
+        userPrompt = `Provide a short, technical and inspiring insight (2 sentences) for this vehicle/aircraft concept: "${prompt}"`;
       } else if (mode === 'dropshipper') {
-        aiPrompt = `As a dropshipping and e-commerce expert, provide a short, strategic insight (2 sentences) for this product discovery or marketing request: "${prompt}"`;
+        systemPrompt = "You are a dropshipping and e-commerce expert.";
+        userPrompt = `Provide a short, strategic insight (2 sentences) for this product discovery or marketing request: "${prompt}"`;
       } else if (mode === 'telecoms') {
-        aiPrompt = `As a telecommunications infrastructure and network expert, provide a short, technical and strategic insight (2 sentences) for this request: "${prompt}"`;
+        systemPrompt = "You are a telecommunications infrastructure and network expert.";
+        userPrompt = `Provide a short, technical and strategic insight (2 sentences) for this request: "${prompt}"`;
       } else if (mode === 'medias') {
-        aiPrompt = `As a media production and broadcasting expert, provide a short, professional insight (2 sentences) for this request: "${prompt}"`;
+        systemPrompt = "You are a media production and broadcasting expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this request: "${prompt}"`;
       } else if (mode === 'social-networks') {
-        aiPrompt = `As a social media strategist and content creator, provide a short, high-engagement insight (2 sentences) for this request: "${prompt}"`;
+        systemPrompt = "You are a social media strategist and content creator.";
+        userPrompt = `Provide a short, high-engagement insight (2 sentences) for this request: "${prompt}"`;
       } else if (mode === 'github') {
-        aiPrompt = `As a GitHub ecosystem and open source expert, provide a short, professional insight (2 sentences) for this GitHub Pages or repository request: "${prompt}"`;
+        systemPrompt = "You are a GitHub ecosystem and open source expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this GitHub Pages or repository request: "${prompt}"`;
       } else if (mode === 'sports') {
-        aiPrompt = `As a sports branding and performance analytics expert, provide a short, professional insight (2 sentences) for this sports-related request: "${prompt}"`;
+        systemPrompt = "You are a sports branding and performance analytics expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this sports-related request: "${prompt}"`;
       } else if (mode === 'health') {
-        aiPrompt = `As a medical interface and healthcare design expert, provide a short, professional and precise insight (2 sentences) for this health-related request: "${prompt}"`;
+        systemPrompt = "You are a medical interface and healthcare design expert.";
+        userPrompt = `Provide a short, professional and precise insight (2 sentences) for this health-related request: "${prompt}"`;
       } else if (mode === 'finance') {
-        aiPrompt = `As a finance AI expert for banks, insurance, VC, fintechs, and mobile operators, provide a short, professional and strategic marketing/product insight (2 sentences) for this request: "${prompt}"`;
+        systemPrompt = "You are a finance AI expert for banks, insurance, VC, fintechs, and mobile operators.";
+        userPrompt = `Provide a short, professional and strategic marketing/product insight (2 sentences) for this request: "${prompt}"`;
       } else if (mode === 'art-ai') {
-        aiPrompt = `As a professional AI artist and digital painter, provide a short, inspiring insight (2 sentences) about the artistic style and technique for this request: "${prompt}"`;
+        systemPrompt = "You are a professional AI artist and digital painter.";
+        userPrompt = `Provide a short, inspiring insight (2 sentences) about the artistic style and technique for this request: "${prompt}"`;
       } else if (mode === 'education') {
-        aiPrompt = `As a global education and ed-tech expert, provide a short, professional and strategic insight (2 sentences) for this educational design or content request: "${prompt}"`;
+        systemPrompt = "You are a global education and ed-tech expert.";
+        userPrompt = `Provide a short, professional and strategic insight (2 sentences) for this educational design or content request: "${prompt}"`;
       } else if (mode === 'maps') {
-        aiPrompt = `As a geographic design and cartography expert, provide a short, professional insight (2 sentences) for this map-related design request: "${prompt}"`;
+        systemPrompt = "You are a geographic design and cartography expert.";
+        userPrompt = `Provide a short, professional insight (2 sentences) for this map-related design request: "${prompt}"`;
       }
 
       const response = await chatModel.invoke([
-        new HumanMessage(aiPrompt),
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userPrompt),
       ]);
       insight = response.content;
     } else {
-      insight = `Simulated insight for ${mode}: Great choice! This will look amazing.`;
+      const fallbacks = {
+        web: "Focus on a clean grid and intuitive navigation to enhance user experience.",
+        mobile: "Prioritize thumb-friendly interactions and a clear visual hierarchy for small screens.",
+        graphics: "Balance negative space with bold typography for a modern, professional look.",
+        posters: "Use high-contrast elements and a strong focal point to grab immediate attention.",
+        cinema: "Consider the rule of thirds and dramatic lighting to create a compelling visual story.",
+        music: "Layer textures and maintain a consistent rhythm to evoke the desired emotional response.",
+        maps: "Ensure data clarity and use a balanced color palette for better geographic visualization."
+      };
+      insight = fallbacks[mode] || `Simulated insight for ${mode}: Great choice! This will look amazing.`;
     }
 
     res.json({
@@ -416,10 +450,12 @@ app.post('/api/github/copilot-suggestion', async (req, res) => {
 
     if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
       const chatModel = provider === 'claude' ? claudeModel : googleModel;
-      const aiPrompt = `As GitHub Copilot, provide a snippet of high-quality React or CSS code that would enhance a "${mode}" project with the following description: "${prompt}". Also explain why this code helps.`;
+      const systemPrompt = "You are GitHub Copilot, a world-class AI coding assistant.";
+      const userPrompt = `Provide a snippet of high-quality React or CSS code that would enhance a "${mode}" project with the following description: "${prompt}". Also explain why this code helps.`;
 
       const response = await chatModel.invoke([
-        new HumanMessage(aiPrompt),
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userPrompt),
       ]);
       suggestion = response.content;
     } else {
@@ -447,16 +483,18 @@ app.post('/api/dropshipper/suggestions', async (req, res) => {
 
     if ((provider === 'google' && hasGoogleKey) || (provider === 'claude' && hasClaudeKey)) {
       const chatModel = provider === 'claude' ? claudeModel : googleModel;
-      const aiPrompt = `As an AI Dropshipping expert, suggest 3 trending products and a basic marketing strategy for the niche: "${niche}". Return the response as a JSON array of objects with "title", "reason", and "strategy" fields.`;
+      const systemPrompt = "You are an AI Dropshipping and E-commerce expert. Always respond with valid JSON.";
+      const userPrompt = `Suggest 3 trending products and a basic marketing strategy for the niche: "${niche}". Return the response strictly as a JSON array of objects with "title", "reason", and "strategy" fields. Do not include any other text.`;
 
       const response = await chatModel.invoke([
-        new HumanMessage(aiPrompt),
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userPrompt),
       ]);
 
       // Simple parsing of AI response if it's JSON-like
       try {
-        const cleanedContent = response.content.replace(/```json|```/g, '').trim();
-        suggestions = JSON.parse(cleanedContent);
+        const cleanedContent = response.content.match(/\[[\s\S]*\]/)?.[0] || response.content;
+        suggestions = JSON.parse(cleanedContent.replace(/```json|```/g, '').trim());
       } catch (e) {
         // Fallback if AI doesn't return perfect JSON
         suggestions = [

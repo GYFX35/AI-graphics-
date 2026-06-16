@@ -58,8 +58,8 @@ test('renders Health AI feature card', () => {
 
 test('renders Health mode button', () => {
   render(<App />);
-  const modeButton = screen.getByText(/^Health$/i);
-  expect(modeButton).toBeDefined();
+  const modeButtons = screen.getAllByText(/^Health AI$/i);
+  expect(modeButtons.length).toBeGreaterThan(0);
 });
 
 test('renders Finance AI feature card', () => {
@@ -70,8 +70,8 @@ test('renders Finance AI feature card', () => {
 
 test('renders Finance mode button', () => {
   render(<App />);
-  const modeButton = screen.getByText(/^Finance$/i);
-  expect(modeButton).toBeDefined();
+  const modeButtons = screen.getAllByText(/^Finance AI$/i);
+  expect(modeButtons.length).toBeGreaterThan(0);
 });
 
 test('renders Art AI Painter feature card', () => {
@@ -82,6 +82,6 @@ test('renders Art AI Painter feature card', () => {
 
 test('renders Art AI mode button', () => {
   render(<App />);
-  const modeButton = screen.getByText(/^Art AI$/i);
-  expect(modeButton).toBeDefined();
+  const modeButtons = screen.getAllByText(/^Art AI Painter$/i);
+  expect(modeButtons.length).toBeGreaterThan(0);
 });
