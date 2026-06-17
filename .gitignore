@@ -116,6 +116,9 @@ dist
 # production
 /build
 
+# database
+server/database.sqlite
+
 # misc
 .DS_Store
 .env.local

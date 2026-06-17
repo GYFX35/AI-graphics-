@@ -22,10 +22,18 @@ const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const { sequelize, User } = require('./models');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize Database
+sequelize.sync().then(() => {
+  console.log('Database synced');
+}).catch(err => {
+  console.error('Error syncing database:', err);
+});
 
 // Trust proxy for secure cookies on platforms like Vercel/Render
 app.set('trust proxy', 1);
@@ -62,9 +70,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Mock user database
-const users = [];
-
 // Passport Local Strategy
 passport.use(new LocalStrategy({
     usernameField: 'email',
@@ -72,15 +77,18 @@ passport.use(new LocalStrategy({
   },
   async (email, password, done) => {
     try {
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const user = await User.findOne({ where: { email: email.toLowerCase() } });
       if (!user) {
         return done(null, false, { message: 'Incorrect email.' });
+      }
+      if (!user.password) {
+        return done(null, false, { message: 'This account uses social login. Please sign in with Google or Facebook.' });
       }
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return done(null, false, { message: 'Incorrect password.' });
       }
-      return done(null, user);
+      return done(null, user.toJSON());
     } catch (err) {
       return done(err);
     }
@@ -98,9 +106,22 @@ if (isGoogleConfigured) {
       callbackURL: "/auth/google/callback",
       proxy: true
     },
-    (accessToken, refreshToken, profile, done) => {
-      // In a real app, you would find or create a user in your database here
-      return done(null, profile);
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ where: { providerId: profile.id, provider: 'google' } });
+        if (!user) {
+          user = await User.create({
+            email: profile.emails[0].value,
+            displayName: profile.displayName,
+            provider: 'google',
+            providerId: profile.id,
+            photos: profile.photos
+          });
+        }
+        return done(null, user.toJSON());
+      } catch (err) {
+        return done(err);
+      }
     }
   ));
 }
@@ -113,10 +134,24 @@ if (isFacebookConfigured) {
       profileFields: ['id', 'displayName', 'photos', 'email'],
       proxy: true
     },
-    (accessToken, refreshToken, profile, done) => {
-      // Store the access token if needed for Graph API calls later
-      profile.accessToken = accessToken;
-      return done(null, profile);
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ where: { providerId: profile.id, provider: 'facebook' } });
+        if (!user) {
+          user = await User.create({
+            email: profile.emails ? profile.emails[0].value : `${profile.id}@facebook.com`,
+            displayName: profile.displayName,
+            provider: 'facebook',
+            providerId: profile.id,
+            photos: profile.photos
+          });
+        }
+        const userObj = user.toJSON();
+        userObj.accessToken = accessToken;
+        return done(null, userObj);
+      } catch (err) {
+        return done(err);
+      }
     }
   ));
 }
@@ -464,31 +499,33 @@ app.post('/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (existingUser) {
-    return res.status(400).json({ error: 'User already exists' });
-  }
-
   try {
+    const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = {
-      id: Date.now().toString(),
-      email,
+    const newUser = await User.create({
+      email: email.toLowerCase(),
       password: hashedPassword,
       displayName: displayName || email.split('@')[0],
       photos: [{ value: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || email)}` }]
-    };
-    users.push(newUser);
+    });
 
-    req.login(newUser, (err) => {
+    const userObj = newUser.toJSON();
+    delete userObj.password;
+
+    req.login(userObj, (err) => {
       if (err) return res.status(500).json({ error: 'Login failed after registration' });
 
       // Send welcome email asynchronously
-      sendWelcomeEmail(email, newUser.displayName).catch(console.error);
+      sendWelcomeEmail(email, userObj.displayName).catch(console.error);
 
-      res.json(newUser);
+      res.json(userObj);
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -545,39 +582,44 @@ app.get('/auth/user', (req, res) => {
 
 app.post('/auth/forgot-password', async (req, res) => {
   const { email } = req.body;
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  try {
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
 
-  if (!user) {
-    // We don't want to reveal if a user exists
-    return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
-  }
-
-  const token = crypto.randomBytes(32).toString('hex');
-  resetTokens.set(token, email);
-
-  // Set token to expire in 1 hour
-  setTimeout(() => resetTokens.delete(token), 3600000);
-
-  if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: email,
-      subject: 'Password Reset - DesignAI Studio',
-      text: `You requested a password reset. Click here to reset your password: ${resetUrl}\n\nIf you didn't request this, ignore this email.`
-    };
-
-    try {
-      await transporter.sendMail(mailOptions);
-    } catch (error) {
-      console.error('Error sending reset email:', error);
-      return res.status(500).json({ error: 'Failed to send reset email' });
+    if (!user) {
+      // We don't want to reveal if a user exists
+      return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
     }
-  } else {
-    console.log(`Reset token for ${email}: ${token}`);
-  }
 
-  res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+    const token = crypto.randomBytes(32).toString('hex');
+    resetTokens.set(token, email);
+
+    // Set token to expire in 1 hour
+    setTimeout(() => resetTokens.delete(token), 3600000);
+
+    if (process.env.GMAIL_USER && process.env.GMAIL_PASS) {
+      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+      const mailOptions = {
+        from: process.env.GMAIL_USER,
+        to: email,
+        subject: 'Password Reset - DesignAI Studio',
+        text: `You requested a password reset. Click here to reset your password: ${resetUrl}\n\nIf you didn't request this, ignore this email.`
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (error) {
+        console.error('Error sending reset email:', error);
+        return res.status(500).json({ error: 'Failed to send reset email' });
+      }
+    } else {
+      console.log(`Reset token for ${email}: ${token}`);
+    }
+
+    res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'An error occurred' });
+  }
 });
 
 app.post('/auth/reset-password', async (req, res) => {
@@ -590,13 +632,15 @@ app.post('/auth/reset-password', async (req, res) => {
 
   const email = storedEmail;
 
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
   try {
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
     resetTokens.delete(token);
     res.json({ success: true, message: 'Password has been reset successfully' });
   } catch (error) {
