@@ -73,6 +73,7 @@ function App() {
   const [resetToken, setResetToken] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [language, setLanguage] = useState('en');
+  const [sponsorStats, setSponsorStats] = useState({ count: 0, amount: 0 });
 
   const t = (key) => translations[language][key] || translations['en'][key];
 
@@ -80,6 +81,7 @@ function App() {
 
   useEffect(() => {
     fetchUser();
+    fetchSponsorshipStats();
 
     // Check for reset token in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -498,6 +500,21 @@ function App() {
     }
   };
 
+  const fetchSponsorshipStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/github/sponsorship-stats`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setSponsorStats({
+        count: data.sponsorCount,
+        amount: data.totalAmount
+      });
+    } catch (error) {
+      console.error('Error fetching sponsorship stats:', error);
+    }
+  };
+
   const fetchFineTuningData = async () => {
     setIsFinetuningLoading(true);
     try {
@@ -876,7 +893,7 @@ function App() {
             <option value="ja">{t('lang_ja')}</option>
             <option value="ar">{t('lang_ar')}</option>
           </select>
-          <button className="sponsor-button">{t('sponsor')}</button>
+          <button className="sponsor-button" onClick={() => window.open('https://github.com/sponsors/GYFX35', '_blank')}>{t('sponsor')}</button>
           {user ? (
             <div className="user-profile">
               <img src={user.photos?.[0]?.value || `https://ui-avatars.com/api/?name=${user.displayName}`} alt={user.displayName} className="user-avatar" />
@@ -1154,15 +1171,15 @@ function App() {
           <p>{t('sponsorship_desc')}</p>
           <div className="sponsorship-stats">
             <div className="stat">
-              <span className="stat-value">500+</span>
+              <span className="stat-value">{sponsorStats.count || '500'}+</span>
               <span className="stat-label">{t('sponsorship_stat_contributors')}</span>
             </div>
             <div className="stat">
-              <span className="stat-value">$10k+</span>
+              <span className="stat-value">${(sponsorStats.amount / 1000).toFixed(0)}k+</span>
               <span className="stat-label">{t('sponsorship_stat_raised')}</span>
             </div>
           </div>
-          <button className="sponsor-cta">{t('sponsorship_btn')}</button>
+          <button className="sponsor-cta" onClick={() => window.open('https://github.com/sponsors/GYFX35', '_blank')}>{t('sponsorship_btn')}</button>
         </div>
       </section>
 
